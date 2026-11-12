@@ -1,0 +1,54 @@
+name: Собрать iPhone-приложение
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Создать проект Flutter и подложить код игры
+        run: |
+          flutter create --platforms=ios --org com.personal --project-name snake app
+          cp lib/main.dart app/lib/main.dart
+          rm -rf app/test
+
+      - name: Название и иконка
+        run: |
+          PLIST=app/ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Змейка" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Змейка" "$PLIST"
+          cd app/ios/Runner/Assets.xcassets/AppIcon.appiconset
+          for f in *.png; do
+            s=$(sips -g pixelWidth "$f" | awk '/pixelWidth/{print $2}')
+            sips -z "$s" "$s" "$GITHUB_WORKSPACE/assets/icon.png" --out "$f" >/dev/null
+          done
+
+      - name: Собрать приложение (без подписи)
+        working-directory: app
+        run: flutter build ios --release --no-codesign
+
+      - name: Упаковать в .ipa
+        run: |
+          mkdir Payload
+          cp -R app/build/ios/iphoneos/Runner.app Payload/
+          zip -qr Snake.ipa Payload
+
+      - name: Выложить .ipa в Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "build-${{ github.run_number }}" Snake.ipa \
+            --title "Змейка, сборка ${{ github.run_number }}" \
+            --notes "Скачай Snake.ipa и установи через Sideloadly."
