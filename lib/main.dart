@@ -21,7 +21,7 @@ class SnakeApp extends StatelessWidget {
       theme: ThemeData(
         brightness: Brightness.dark,
         useMaterial3: true,
-        colorSchemeSeed: Colors.green,
+        colorSchemeSeed: Colors.blue,
       ),
       home: const GamePage(),
     );
@@ -146,19 +146,19 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (pending.isNotEmpty) dir = pending.removeAt(0);
 
     final h = snake.first;
-    final next = switch (dir) {
+    final step = switch (dir) {
       Dir.up => Point(h.x, h.y - 1),
       Dir.down => Point(h.x, h.y + 1),
       Dir.left => Point(h.x - 1, h.y),
       Dir.right => Point(h.x + 1, h.y),
     };
+    // Сквозь стены: вышла за край — появляется с другой стороны.
+    final next = Point((step.x + cols) % cols, (step.y + rows) % rows);
 
     final eats = next == food;
     final body = eats ? snake : snake.sublist(0, snake.length - 1);
-    final hitWall =
-        next.x < 0 || next.y < 0 || next.x >= cols || next.y >= rows;
 
-    if (hitWall || body.contains(next)) {
+    if (body.contains(next)) {
       setState(_endGame);
       return;
     }
@@ -388,7 +388,7 @@ class _BoardPainter extends CustomPainter {
       final p = snake[i];
       final t = snake.length == 1 ? 0.0 : i / (snake.length - 1);
       final color = Color.lerp(
-          const Color(0xFF7EE787), const Color(0xFF2E9E4A), t)!;
+          const Color(0xFF7CC4FF), const Color(0xFF1D4ED8), t)!;
       final r = Rect.fromLTWH(p.x * cell, p.y * cell, cell, cell)
           .deflate(cell * 0.06);
       canvas.drawRRect(
